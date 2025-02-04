@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>NYPD Crime Map - 3D Clusters</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet" />
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoiYWJkdWxyYXp6YXEzMTAzIiwiYSI6ImNtNm96bXRnazE5bmQya3B4eHNhNjBycjEifQ.T2yMuOmReGfZEvhCEoAg9w';
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v10',
+            center: [-74.006, 40.7128],
+            zoom: 15,
+            pitch: 45,
+            bearing: -17.6,
+            antialias: true
+        });
+
+        map.on('load', () => {
+            map.addSource('mapbox-dem', {
+                type: 'raster-dem',
+                url: 'mapbox://mapbox.terrain-rgb',
+                tileSize: 512,
+                maxzoom: 14
+            });
+
+            map.setTerrain({
+                source: 'mapbox-dem',
+                exaggeration: 1.5
+            });
+
+            map.addLayer({
+                id: 'sky',
+                type: 'sky',
+                paint: {
+                    'sky-type': 'atmosphere',
+                    'sky-atmosphere-sun': [0.0, 0.0],
+                    'sky-atmosphere-sun-intensity': 15
+                }
+            });
+
+            map.addSource('crime-data', {
+                type: 'geojson',
+                data: 'crime_data.geojson',
+                cluster: true,
+                clusterMaxZoom: 14,
+                clusterRadius: 50
+            });
+
+            map.addLayer({
+                id: 'clusters',
+                type: 'circle',
+                source: 'crime-data',
+                filter: ['has', 'point_count'],
+                paint: {
+                    'circle-color': [
+                        'step',
+                        ['get', 'point_count'],
+                        '#FFEDA0', // light yellow for small clusters
+                        20, '#FEB24C', // orange for medium clusters
+                        50, '#F03B20' // red for large clusters
+                    ],
+                    'circle-radius': [
+                        'step',
+                        ['get', 'point_count'],
+                        15, 20, 25, 50, 35
+                    ],
+                    'circle-opacity': 0.8
+                }
+            });
+
+            map.addLayer({
+                id: 'cluster-count',
+                type: 'symbol',
+                source: 'crime-data',
+                filter: ['has', 'point_count'],
+                layout: {
+                    'text-field': '{point_count_abbreviated}',
+                    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                    'text-size': 12
+                }
+            });
+
+            map.addLayer({
+                id: 'unclustered-point',
+                type: 'circle',
+                source: 'crime-data',
+                filter: ['!', ['has', 'point_count']],
+                paint: {
+                    'circle-color': '#FF0000',
+                    'circle-radius': 8,
+                    'circle-stroke-width': 1,
+                    'circle-stroke-color': '#FFFFFF',
+                    'circle-opacity': 0.9
+                }
+            });
+
+            map.on('click', 'clusters', (e) => {
+                const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+                const clusterId = features[0].properties.cluster_id;
+                map.getSource('crime-data').getClusterExpansionZoom(clusterId, (err, zoom) => {
+                    if (err) return;
+
+                    map.easeTo({
+                        center: features[0].geometry.coordinates,
+                        zoom: zoom
+                    });
+                });
+            });
+
+            map.on('click', 'unclustered-point', (e) => {
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                const { crime_type, date, borough } = e.features[0].properties;
+
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(`
+                        <strong>Crime Type:</strong> ${crime_type}<br>
+                        <strong>Date:</strong> ${date}<br>
+                        <strong>Borough:</strong> ${borough}
+                    `)
+                    .addTo(map);
+            });
+
+            map.on('mouseenter', 'clusters', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', 'clusters', () => {
+                map.getCanvas().style.cursor = '';
+            });
+        });
+    </script>
+</body>
+</html>
