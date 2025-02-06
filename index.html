@@ -1,220 +1,303 @@
-< !DOCTYPE html><html><head><meta charset="utf-8" /><title>NYPD Crime Map - 3D Clusters</title><meta name="viewport" content="width=device-width, initial-scale=1" /><script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script><link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet" /><style>body {
-	margin: 0;
-	padding: 0;
-}
+< !DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>NYPD Crime Map - 3D Clusters</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
+        <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+            }
 
-#map {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	width: 100%;
-}
+            #map {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                width: 100%;
+            }
 
-#slider-container {
-	top: 90%;
-	position: absolute;
-	left: 50%;
-	transform: translateX(-50%);
-	background: rgba(20, 20, 20, 0.9);
-	padding: 15px;
-	border-radius: 0px;
-	z-index: 1;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	width: 30%;
-	box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
-}
+            #slider-container {
+                top: 90%;
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(20, 20, 20, 0.9);
+                padding: 15px;
+                border-radius: 0px;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                width: 30%;
+                box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+            }
 
-#date-slider {
-	width: 100%;
-	-webkit-appearance: none;
-	appearance: none;
-	height: 6px;
-	background: #444;
-	/* Unfilled background */
-	outline: none;
-	transition: 0.3s;
-}
+            #date-slider {
+                width: 100%;
+                -webkit-appearance: none;
+                appearance: none;
+                height: 6px;
+                background: #444;
+                /* Unfilled background */
+                outline: none;
+                transition: 0.3s;
+            }
 
-#date-slider::-webkit-slider-thumb {
-	-webkit-appearance: none;
-	appearance: none;
-	width: 20px;
-	/* Rectangular thumb width */
-	height: 12px;
-	/* Rectangular thumb height */
-	background: #ff4c4c;
-	cursor: pointer;
-	transition: 0.3s;
-}
+            #date-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 20px;
+                /* Rectangular thumb width */
+                height: 12px;
+                /* Rectangular thumb height */
+                background: #ff4c4c;
+                cursor: pointer;
+                transition: 0.3s;
+            }
 
-#date-slider::-moz-range-thumb {
-	width: 20px;
-	/* Rectangular thumb width */
-	height: 12px;
-	/* Rectangular thumb height */
-	background: #ff4c4c;
-	cursor: pointer;
-}
+            #date-slider::-moz-range-thumb {
+                width: 20px;
+                /* Rectangular thumb width */
+                height: 12px;
+                /* Rectangular thumb height */
+                background: #ff4c4c;
+                cursor: pointer;
+            }
 
-/* Prefilled effect on the slider */
-#date-slider:focus {
-	background: linear-gradient(to right, #ff4c4c 0%, #ff4c4c 50%, #444 50%, #444 100%);
-}
+            /* Prefilled effect on the slider */
+            #date-slider:focus {
+                background: linear-gradient(to right, #ff4c4c 0%, #ff4c4c 50%, #444 50%, #444 100%);
+            }
 
-#date-display {
-	font-family: Arial, sans-serif;
-	margin-top: 8px;
-	font-size: 14px;
-	color: #bbb;
-}
+            #date-display {
+                font-family: Arial, sans-serif;
+                margin-top: 8px;
+                font-size: 14px;
+                color: #bbb;
+            }
+            /* Legend styling */
+            #legend {
+                position: absolute;
+                top: 10%;
+                right: 1%;
+                background: rgba(0, 0, 0, 0.7);
+                padding: 10px;
+                color: #fff;
+                font-size: 14px;
+                z-index: 2;
+            }
 
-</style></head><body><div id="slider-container"><input type="range" id="date-slider" min="0" max="364" value="0" step="1"><div id="date-display">Crimes After : 2024-01-01</div></div><div id="map"></div><script>mapboxgl.accessToken='pk.eyJ1IjoiYWJkdWxyYXp6YXEzMTAzIiwiYSI6ImNtNm96bXRnazE5bmQya3B4eHNhNjBycjEifQ.T2yMuOmReGfZEvhCEoAg9w';
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 5px;
+            }
 
-const map=new mapboxgl.Map({
-	container: 'map',
-	style: 'mapbox://styles/mapbox/dark-v10',
-	center: [-74.006, 40.7128],
-	zoom: 15,
-	pitch: 45,
-	bearing: -17.6,
-	antialias: true
-});
+            .legend-color {
+                width: 15px;
+                height: 15px;
+                margin-right: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="slider-container">
+            <input type="range" id="date-slider" min="0" max="364" value="0" step="1" />
+            <div id="date-display">Crimes After 2024-01-01</div>
+        </div>
+        <div id="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #fff7ec;"></div>
+                <span>0-25 Crimes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #fee8c8;"></div>
+                <span>26-50 Crimes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #fdbb84;"></div>
+                <span>51-100 Crimes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #fc8d59;"></div>
+                <span>101-250 Crimes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ef6548;"></div>
+                <span>251-500 Crimes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #d7301f;"></div>
+                <span>501-1000 Crimes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #b30000;"></div>
+                <span>1001-1500 Crimes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #7f0000;"></div>
+                <span>1501+ Crimes</span>
+            </div>
+        </div>
 
-let crimeData;
+        <div id="map"></div>
+        <script>
+            mapboxgl.accessToken = "pk.eyJ1IjoiYWJkdWxyYXp6YXEzMTAzIiwiYSI6ImNtNm96bXRnazE5bmQya3B4eHNhNjBycjEifQ.T2yMuOmReGfZEvhCEoAg9w";
 
-fetch('crime_data.geojson') .then(response=> response.json()) .then(data=> {
-		crimeData=data;
-		initializeMap(data);
-	});
+            const map = new mapboxgl.Map({
+                container: "map",
+                style: "mapbox://styles/mapbox/dark-v10",
+                center: [-74.006, 40.7128],
+                zoom: 15,
+                pitch: 45,
+                bearing: -17.6,
+                antialias: true,
+            });
 
-function initializeMap(data) {
-	map.on('load', ()=> {
-			map.addSource('crime-data', {
-				type: 'geojson',
-				data: data,
-				cluster: true,
-				clusterMaxZoom: 14,
-				clusterRadius: 50
-			});
+            let crimeData;
 
-		map.addLayer({
+            fetch("crime_data.geojson")
+                .then((response) => response.json())
+                .then((data) => {
+                    crimeData = data;
+                    initializeMap(data);
+                });
 
-			id: 'clusters',
-			type: 'circle',
-			source: 'crime-data',
-			filter: ['has', 'point_count'],
-			paint: {
-				'circle-color': [ 'step',
-				['get', 'point_count'],
-				'#FFF7EC', 25, '#FEE8C8', 50, '#FDBB84',
-				100, '#FC8D59', 250, '#EF6548',
-				500, '#D7301F', 1000, '#B30000', 1500, '#7F0000'
-				],
-				'circle-radius': [ 'step',
-				['get', 'point_count'],
-				10, 25, 15, 50, 20, 100, 25, 250, 30, 500, 35, 1000, 40, 1500, 45],
-				'circle-opacity': 0.85
-			}
-		});
+            function initializeMap(data) {
+                map.on("load", () => {
+                    map.addSource("crime-data", {
+                        type: "geojson",
+                        data: data,
+                        cluster: true,
+                        clusterMaxZoom: 14,
+                        clusterRadius: 50,
+                    });
 
-	map.addLayer({
+                    map.addLayer({
+                        id: "clusters",
+                        type: "circle",
+                        source: "crime-data",
+                        filter: ["has", "point_count"],
+                        paint: {
+                            "circle-color": ["step", ["get", "point_count"], "#FFF7EC", 25, "#FEE8C8", 50, "#FDBB84", 100, "#FC8D59", 250, "#EF6548", 500, "#D7301F", 1000, "#B30000", 1500, "#7F0000"],
+                            "circle-radius": ["step", ["get", "point_count"], 10, 25, 15, 50, 20, 100, 25, 250, 30, 500, 35, 1000, 40, 1500, 45],
+                            "circle-opacity": 0.85,
+                        },
+                    });
 
-		id: 'cluster-count',
-		type: 'symbol',
-		source: 'crime-data',
-		filter: ['has', 'point_count'],
-		layout: {
-			'text-field': '{point_count_abbreviated}',
-			'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-			'text-size': 12
-		}
-	});
+                    map.addLayer({
+                        id: "cluster-count",
+                        type: "symbol",
+                        source: "crime-data",
+                        filter: ["has", "point_count"],
+                        layout: {
+                            "text-field": "{point_count_abbreviated}",
+                            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+                            "text-size": 12,
+                        },
+                    });
 
-map.addLayer({
+                    map.addLayer({
+                        id: "unclustered-point",
+                        type: "circle",
+                        source: "crime-data",
+                        filter: ["!", ["has", "point_count"]],
+                        paint: {
+                            "circle-color": "#FFF7EC", // Fill color
+                            "circle-radius": 5, // Circle radius
+                            "circle-stroke-width": 1, // Initial border width
+                            "circle-stroke-color": "#FFFFFF", // Initial border color
+                            "circle-opacity": 0.9, // Initial opacity
+                        },
+                    });
 
-	id: 'unclustered-point',
-	type: 'circle',
-	source: 'crime-data',
-	filter: ['!', ['has', 'point_count']],
-	paint: {
-		'circle-color': '#FF0000',
-		'circle-radius': 5,
-		'circle-stroke-width': 1,
-		'circle-stroke-color': '#FFFFFF',
-		'circle-opacity': 0.9
-	}
-});
+                    // Blinking effect for the border (stroke) of unclustered points
+                    let borderWidth = 1;
+                    let borderColor = "#FFFFFF"; // White border color
+                    const blinkSpeed = 500; // Interval time in milliseconds
 
-map.on('click', 'clusters', (e)=> {
-		const features=map.queryRenderedFeatures(e.point, {
-			layers: ['clusters']
-		});
-	const clusterId=features[0].properties.cluster_id;
+                    setInterval(() => {
+                        // Toggle the border color and width for a glowing effect
+                        if (borderWidth === 1) {
+                            borderWidth = 1.5; // Make the border thicker
+                            borderColor = "#FFF7EC"; // Change the border color to yellow (or any other bright color)
+                        } else {
+                            borderWidth = 1; // Reset to original border width
+                            borderColor = "#D77B2B"; // Reset to original border color
+                        }
 
-	map.getSource('crime-data').getClusterExpansionZoom(clusterId, (err, zoom)=> {
-			if (err) return;
+                        // Update the paint properties of the unclustered points layer
+                        map.setPaintProperty("unclustered-point", "circle-stroke-width", borderWidth);
+                        map.setPaintProperty("unclustered-point", "circle-stroke-color", borderColor);
+                    }, blinkSpeed);
 
-			map.easeTo({
-				center: features[0].geometry.coordinates,
-				zoom: zoom
-			});
-	});
-});
+                    map.on("click", "clusters", (e) => {
+                        const features = map.queryRenderedFeatures(e.point, {
+                            layers: ["clusters"],
+                        });
+                        const clusterId = features[0].properties.cluster_id;
 
-map.on('click', 'unclustered-point', (e)=> {
-		const coordinates=e.features[0].geometry.coordinates.slice();
+                        map.getSource("crime-data").getClusterExpansionZoom(clusterId, (err, zoom) => {
+                            if (err) return;
 
-		const {
-			crime_type, date, borough
-		}
+                            map.easeTo({
+                                center: features[0].geometry.coordinates,
+                                zoom: zoom,
+                            });
+                        });
+                    });
 
-		=e.features[0].properties;
+                    map.on("click", "unclustered-point", (e) => {
+                        const coordinates = e.features[0].geometry.coordinates.slice();
 
-		new mapboxgl.Popup() .setLngLat(coordinates) .setHTML(` <strong>Crime:</strong> ${crime_type}<br> <strong>Date:</strong> ${date}<br> <strong>Borough:</strong> ${borough} `) .addTo(map);
-	});
+                        const { crime_type, date, borough } = e.features[0].properties;
 
-map.on('mouseenter', 'clusters', ()=> {
-		map.getCanvas().style.cursor='pointer';
-	});
+                        new mapboxgl.Popup().setLngLat(coordinates).setHTML(` <strong>Crime:</strong> ${crime_type}<br> <strong>Date:</strong> ${date}<br> <strong>Borough:</strong> ${borough} `).addTo(map);
+                    });
 
-map.on('mouseleave', 'clusters', ()=> {
-		map.getCanvas().style.cursor='';
-	});
+                    map.on("mouseenter", "clusters", () => {
+                        map.getCanvas().style.cursor = "pointer";
+                    });
 
+                    map.on("mouseleave", "clusters", () => {
+                        map.getCanvas().style.cursor = "";
+                    });
 
-// Slider functionality
-const baseDate=new Date("2024-01-01");
-const slider=document.getElementById('date-slider');
-const dateDisplay=document.getElementById('date-display');
+                    // Slider functionality
+                    const baseDate = new Date("2024-01-01");
+                    const slider = document.getElementById("date-slider");
+                    const dateDisplay = document.getElementById("date-display");
 
-slider.addEventListener('input', (e)=> {
-		const filled=(e.target.value / e.target.max) * 100; // Calculate percentage
-		e.target.style.background=`linear-gradient(to right, #ff4c4c ${filled}%, #444 ${filled}%)`;
-	});
+                    slider.addEventListener("input", (e) => {
+                        const filled = (e.target.value / e.target.max) * 100; // Calculate percentage
+                        e.target.style.background = `linear-gradient(to right, #ff4c4c ${filled}%, #444 ${filled}%)`;
+                    });
 
-slider.addEventListener('input', (e)=> {
-		const selectedDate=new Date(baseDate);
-        
-		selectedDate.setDate(baseDate.getDate() + Number(e.target.value));
+                    slider.addEventListener("input", (e) => {
+                        const selectedDate = new Date(baseDate);
 
-		dateDisplay.textContent=`Crimes After: ${selectedDate.toISOString().split('T')[0]}`;
-		filterByDate(selectedDate);
-	});
-});
-}
+                        selectedDate.setDate(baseDate.getDate() + Number(e.target.value));
 
-function filterByDate(selectedDate) {
-	const filteredFeatures=crimeData.features.filter(feature=> {
-			const crimeDate=new Date(feature.properties.date);
-			return crimeDate.toISOString().split('T')[0] >=selectedDate.toISOString().split('T')[0];
-		});
+                        dateDisplay.textContent = `Crimes After ${selectedDate.toISOString().split("T")[0]}`;
+                        filterByDate(selectedDate);
+                    });
+                });
+            }
 
-	map.getSource('crime-data').setData({
-		type: 'FeatureCollection',
-		features: filteredFeatures
-	});
-}
+            function filterByDate(selectedDate) {
+                const filteredFeatures = crimeData.features.filter((feature) => {
+                    const crimeDate = new Date(feature.properties.date);
+                    return crimeDate.toISOString().split("T")[0] >= selectedDate.toISOString().split("T")[0];
+                });
 
-</script></body></html>
+                map.getSource("crime-data").setData({
+                    type: "FeatureCollection",
+                    features: filteredFeatures,
+                });
+            }
+        </script>
+    </body>
+</html>
