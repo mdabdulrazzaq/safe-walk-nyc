@@ -4,24 +4,31 @@ on:
     branches:
       - master
       - main
+
 permissions:
   contents: write
+
 jobs:
   build-and-deploy:
     concurrency: ci-${{ github.ref }} # Recommended if you intend to make multiple deployments in quick succession.
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v3
 
-      - name: Install and Build 🔧 # This example project is built using npm and outputs the result to the 'build' folder. Replace with the commands required to build your project, or remove this step entirely if your site is pre-built.
+      - name: Install Python and Dependencies 📦
         run: |
-          npm i -f
-          yarn build
-          touch build/.nojekyll
-          cp build/404.html build/index.html
-      - name: Deploy 🚀
+          sudo apt-get update
+          sudo apt-get install python3 python3-pip -y
+
+      - name: Deploy using Python HTTP Server 🚀
+        run: |
+          # Start the Python HTTP server in the background to serve the HTML page
+          nohup python3 -m http.server 
+
+      - name: Deploy to GitHub Pages 🚀
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: build # The folder the action should deploy.
+          folder: .  # This will deploy everything in the root folder (assuming the HTML file is here)
           branch: gh-pages
