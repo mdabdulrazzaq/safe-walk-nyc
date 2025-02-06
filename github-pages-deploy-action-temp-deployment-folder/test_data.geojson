@@ -1,0 +1,18 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-74.006, 40.7128]
+            },
+            "properties": {
+                "crime_type": "Theft",
+                "date": "2024-10-21 12:34:56",
+                "borough": "Manhattan",
+                "offense_level": "Felony"
+            }
+        }
+    ]
+}
