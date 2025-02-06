@@ -45,3 +45,13 @@ df = pd.DataFrame(data)
 
 # Display the first few rows
 print(df.head())
+
+
+#FFF7EC
+#fee8c8
+#fdbb84
+#fc8d59
+#ef6548
+#d7301f
+#b30000
+#7f0000

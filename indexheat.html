@@ -2,279 +2,222 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>NYPD Crime Map - 3D with All Visualizations</title>
+    <title>NYPD Crime Map - 3D Clusters</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet" />
     <style>
-        body { margin: 0; padding: 0; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        #slider-container {
+            position: absolute;
+            top: 90%;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 20, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 50%;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+        }
+        #date-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: #444;
+            outline: none;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        #date-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #ff4c4c;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        #date-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: #ff4c4c;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        #date-display {
+            font-family: Arial, sans-serif;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #bbb;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+
+    <div id="slider-container">
+        <input type="range" id="date-slider" min="0" max="364" value="0" step="1">
+        <div id="date-display">Crimes Till : 2024-01-01</div>
+    </div>
+
     <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoiYWJkdWxyYXp6YXEzMTAzIiwiYSI6ImNtNm96bXRnazE5bmQya3B4eHNhNjBycjEifQ.T2yMuOmReGfZEvhCEoAg9w';
 
         const map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/dark-v10',
-            center: [-74.006, 40.7128], // NYC coordinates
-            zoom: 12,
-            pitch: 45, // Tilt for 3D effect
-            bearing: -17.6, // Rotate the map slightly
-            antialias: true // Enable antialiasing for smoother 3D rendering
+            center: [-74.006, 40.7128],
+            zoom: 15,
+            pitch: 45,
+            bearing: -17.6,
+            antialias: true
         });
 
-        map.on('load', () => {
-            // Add terrain source
-            map.addSource('mapbox-dem', {
-                type: 'raster-dem',
-                url: 'mapbox://mapbox.terrain-rgb',
-                tileSize: 512,
-                maxzoom: 14
+        let crimeData;
+
+        fetch('crime_data.geojson')
+            .then(response => response.json())
+            .then(data => {
+                crimeData = data;
+                initializeMap(data);
             });
 
-            // Add terrain layer with exaggeration for 3D effect
-            map.setTerrain({
-                source: 'mapbox-dem',
-                exaggeration: 1.5
-            });
+        function initializeMap(data) {
+            map.on('load', () => {
+                map.addSource('crime-data', {
+                    type: 'geojson',
+                    data: data,
+                    cluster: true,
+                    clusterMaxZoom: 14,
+                    clusterRadius: 50
+                });
 
-            // Add sky layer for a realistic 3D effect
-            map.addLayer({
-                id: 'sky',
-                type: 'sky',
-                paint: {
-                    'sky-type': 'atmosphere',
-                    'sky-atmosphere-sun': [0.0, 0.0],
-                    'sky-atmosphere-sun-intensity': 15
-                }
-            });
-
-            // Add 3D buildings layer
-            map.addLayer({
-                id: '3d-buildings',
-                source: 'composite',
-                'source-layer': 'building',
-                type: 'fill-extrusion',
-                minzoom: 15,
-                paint: {
-                    'fill-extrusion-color': '#aaa',
-                    'fill-extrusion-height': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        15,
-                        0,
-                        15.05,
-                        ['get', 'height']
-                    ],
-                    'fill-extrusion-base': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        15,
-                        0,
-                        15.05,
-                        ['get', 'min_height']
-                    ],
-                    'fill-extrusion-opacity': 0.6
-                }
-            });
-
-            // Add crime data source
-            map.addSource('crime-data', {
-                type: 'geojson',
-                data: 'crime_data.geojson',
-                cluster: true, // Enable clustering
-                clusterRadius: 50,
-                clusterMaxZoom: 14
-            });
-
-            // Add heatmap layer
-            map.addLayer({
-                id: 'crime-heatmap',
-                type: 'heatmap',
-                source: 'crime-data',
-                paint: {
-                    'heatmap-weight': 1,
-                    'heatmap-intensity': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        0, 1,
-                        15, 3
-                    ],
-                    'heatmap-color': [
-                        'interpolate',
-                        ['linear'],
-                        ['heatmap-density'],
-                        0, 'rgba(0, 0, 255, 0)',
-                        0.2, 'rgba(0, 255, 0, 0.5)',
-                        0.4, 'rgba(255, 255, 0, 0.7)',
-                        1, 'rgba(255, 0, 0, 1)'
-                    ],
-                    'heatmap-radius': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        0, 2,
-                        15, 20
-                    ],
-                    'heatmap-opacity': 0.7
-                }
-            });
-
-            // Add clustered points layer
-            map.addLayer({
-                id: 'crime-clusters',
-                type: 'circle',
-                source: 'crime-data',
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-radius': [
-                        'step',
-                        ['get', 'point_count'],
-                        20,
-                        100, 30,
-                        750, 40
-                    ],
-                    'circle-color': [
-                        'step',
-                        ['get', 'point_count'],
-                        '#51bbd6',
-                        100, '#f1f075',
-                        750, '#f28cb1'
-                    ],
-                    'circle-opacity': 0.8,
-                    'circle-stroke-width': 1,
-                    'circle-stroke-color': '#fff'
-                }
-            });
-
-            // Add unclustered points layer
-            map.addLayer({
-                id: 'crime-points',
-                type: 'circle',
-                source: 'crime-data',
-                filter: ['!', ['has', 'point_count']],
-                paint: {
-                    'circle-radius': 5,
-                    'circle-color': '#FF0000',
-                    'circle-opacity': 0.8,
-                    'circle-stroke-width': 1,
-                    'circle-stroke-color': '#fff'
-                }
-            });
-
-            // Add 3D extrusions layer for crime density
-            map.addLayer({
-                id: 'crime-density',
-                type: 'fill-extrusion',
-                source: 'crime-data',
-                paint: {
-                    'fill-extrusion-height': [
-                        'interpolate',
-                        ['linear'],
-                        ['get', 'crime_count'], // Replace with your aggregated crime count
-                        0, 0,
-                        100, 1000
-                    ],
-                    'fill-extrusion-color': [
-                        'interpolate',
-                        ['linear'],
-                        ['get', 'crime_count'],
-                        0, '#00FF00', // Green for low crime
-                        50, '#FFFF00', // Yellow for medium crime
-                        100, '#FF0000' // Red for high crime
-                    ],
-                    'fill-extrusion-opacity': 0.6
-                }
-            });
-
-            // Load custom icon for symbol layer
-            map.loadImage('https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Map_marker_icon_%E2%80%93_Nicolas_Mollet_%E2%80%93_Crime_%E2%80%93_Law_%26_judiciary_%E2%80%93_Black.png/120px-Map_marker_icon_%E2%80%93_Nicolas_Mollet_%E2%80%93_Crime_%E2%80%93_Law_%26_judiciary_%E2%80%93_Black.png', (error, image) => {
-                if (error) throw error;
-                map.addImage('crime-icon', image);
-
-                // Add symbol layer with custom icon
                 map.addLayer({
-                    id: 'crime-symbols',
-                    type: 'symbol',
+                    id: 'clusters',
+                    type: 'circle',
                     source: 'crime-data',
-                    layout: {
-                        'icon-image': 'crime-icon',
-                        'icon-size': 0.1,
-                        'icon-allow-overlap': true
+                    filter: ['has', 'point_count'],
+                    paint: {
+                        'circle-color': [
+                            'step',
+                            ['get', 'point_count'],
+                            '#FFF7EC', 25, '#FEE8C8', 50, '#FDBB84',
+                            100, '#FC8D59', 250, '#EF6548',
+                            500, '#D7301F', 1000, '#B30000', 1500, '#7F0000'
+                        ],
+                        'circle-radius': [
+                            'step',
+                            ['get', 'point_count'],
+                            10, 25, 15, 50, 20, 100, 25, 250, 30, 500, 35, 1000, 40, 1500, 45
+                        ],
+                        'circle-opacity': 0.8
                     }
                 });
-            });
-
-            // Add choropleth layer
-            map.addLayer({
-                id: 'crime-choropleth',
-                type: 'fill',
+     map.addLayer({
+                id: 'cluster-count',
+                type: 'symbol',
                 source: 'crime-data',
-                paint: {
-                    'fill-color': [
-                        'interpolate',
-                        ['linear'],
-                        ['get', 'crime_count'], // Replace with your aggregated crime count
-                        0, '#00FF00', // Green for low crime
-                        50, '#FFFF00', // Yellow for medium crime
-                        100, '#FF0000' // Red for high crime
-                    ],
-                    'fill-opacity': 0.7
+                filter: ['has', 'point_count'],
+                layout: {
+                    'text-field': '{point_count_abbreviated}',
+                    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                    'text-size': 12
                 }
             });
+                map.addLayer({
+                    id: 'unclustered-point',
+                    type: 'circle',
+                    source: 'crime-data',
+                    filter: ['!', ['has', 'point_count']],
+                    paint: {
+                        'circle-color': '#FF0000',
+                        'circle-radius': 5,
+                        'circle-stroke-width': 1,
+                        'circle-stroke-color': '#FFFFFF',
+                        'circle-opacity': 0.9
+                    }
+                });
 
-            // Add interactivity for clustered points
-            map.on('click', 'crime-clusters', (e) => {
-                const features = map.queryRenderedFeatures(e.point, { layers: ['crime-clusters'] });
-                const clusterId = features[0].properties.cluster_id;
-                const pointCount = features[0].properties.point_count;
-
-                map.getSource('crime-data').getClusterExpansionZoom(clusterId, (err, zoom) => {
-                    if (err) return;
-
-                    map.easeTo({
-                        center: features[0].geometry.coordinates,
-                        zoom: zoom
+                map.on('click', 'clusters', (e) => {
+                    const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+                    const clusterId = features[0].properties.cluster_id;
+                    map.getSource('crime-data').getClusterExpansionZoom(clusterId, (err, zoom) => {
+                        if (err) return;
+                        map.easeTo({
+                            center: features[0].geometry.coordinates,
+                            zoom: zoom
+                        });
                     });
                 });
 
-                new mapboxgl.Popup()
-                    .setLngLat(features[0].geometry.coordinates)
-                    .setHTML(`<strong>Crimes in Cluster:</strong> ${pointCount}`)
-                    .addTo(map);
+  map.on('click', 'unclustered-point', (e) => {
+    const coordinates = e.features[0].geometry.coordinates.slice();
+    const { crime_type, date, borough } = e.features[0].properties;
+
+    new mapboxgl.Popup()
+        .setLngLat(coordinates)
+        .setHTML(`
+            <strong>Crime Type:</strong> ${crime_type}<br>
+            <strong>Date:</strong> ${date}<br>
+            <strong>Borough:</strong> ${borough}
+        `)
+        .addTo(map);
+});
+
+
+
+                map.on('mouseenter', 'clusters', () => {
+                    map.getCanvas().style.cursor = 'pointer';
+                });
+                map.on('mouseleave', 'clusters', () => {
+                    map.getCanvas().style.cursor = '';
+                });
+
+                // Slider functionality
+                const baseDate = new Date("2024-01-01");
+                const slider = document.getElementById('date-slider');
+                const dateDisplay = document.getElementById('date-display');
+
+                slider.addEventListener('input', (e) => {
+                    const selectedDate = new Date(baseDate);
+                    selectedDate.setDate(baseDate.getDate() + Number(e.target.value));
+                    
+                    dateDisplay.textContent = `Date: ${selectedDate.toISOString().split('T')[0]}`;
+                    filterByDate(selectedDate);
+                });
+            });
+        }
+
+        function filterByDate(selectedDate) {
+            const filteredFeatures = crimeData.features.filter(feature => {
+                const crimeDate = new Date(feature.properties.date);
+                return crimeDate.toISOString().split('T')[0] >= selectedDate.toISOString().split('T')[0];
             });
 
-            // Add interactivity for unclustered points
-            map.on('click', 'crime-points', (e) => {
-                const coordinates = e.features[0].geometry.coordinates.slice();
-                const crimeType = e.features[0].properties.crime_type;
-                const date = e.features[0].properties.date;
-                const borough = e.features[0].properties.borough;
-
-                new mapboxgl.Popup()
-                    .setLngLat(coordinates)
-                    .setHTML(`
-                        <strong>Crime Type:</strong> ${crimeType}<br>
-                        <strong>Date:</strong> ${date}<br>
-                        <strong>Borough:</strong> ${borough}
-                    `)
-                    .addTo(map);
+            map.getSource('crime-data').setData({
+                type: 'FeatureCollection',
+                features: filteredFeatures
             });
-
-            // Change cursor on hover
-            map.on('mouseenter', ['crime-clusters', 'crime-points'], () => {
-                map.getCanvas().style.cursor = 'pointer';
-            });
-            map.on('mouseleave', ['crime-clusters', 'crime-points'], () => {
-                map.getCanvas().style.cursor = '';
-            });
-        });
+        }
     </script>
 </body>
 </html>
